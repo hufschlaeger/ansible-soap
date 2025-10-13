@@ -1,0 +1,19 @@
+namespace: hufschlaeger.net
+name: soap
+version: 1.0.0
+readme: README.md
+authors:
+  - Daniel Hufschläger <daniel@hufschlaeger.net>
+description: SOAP Integration for Ansible
+license:
+  - GPL-3.0-or-later
+tags:
+  - soap
+  - webservice
+  - api
+  - integration
+dependencies: {}
+repository: https://github.com/dhufe/ansible-soap
+documentation: https://github.com/dhufe/ansible-soap/wiki
+homepage: https://github.com/dhufe/ansible-soap
+issues: https://github.com/dhufe/ansible-soap/issues
