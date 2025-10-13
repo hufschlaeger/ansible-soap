@@ -100,4 +100,6 @@ cat > README.md << 'EOF'
 ## Installation
 
 ```bash
-pip_install_with_proxy -r requirements.txt
+pip install -r requirements.txt
+```
+EOF
