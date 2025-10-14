@@ -2,8 +2,6 @@
 HTTP-basierte Implementierung des SOAP Repository.
 """
 from typing import Optional, Dict
-from datetime import datetime
-import time
 
 from ...domain.entities.soap_request import SoapRequest
 from ...domain.entities.soap_response import SoapResponse, ResponseStatus
@@ -12,11 +10,9 @@ from ...domain.repositories.soap_repository import (
     SoapRepositoryError,
     EndpointNotReachableError,
     InvalidResponseError,
-    AuthenticationError
 )
 from ..adapters.http_client import HttpClient, HttpClientError, HttpResponse
 from ..adapters.xml_parser import XmlParser, XmlParserError
-
 
 class HttpSoapRepository(SoapRepository):
     """
@@ -26,14 +22,19 @@ class HttpSoapRepository(SoapRepository):
     def __init__(
             self,
             http_client: Optional[HttpClient] = None,
-            verify_ssl: bool = True
+            verify_ssl: bool = True,
+            timeout: int = 30  # ✅ NEU: Standard-Timeout
     ):
         """
         Args:
             http_client: Optional vorkonfigurierter HTTP Client
             verify_ssl: Ob SSL-Zertifikate validiert werden sollen
+            timeout: Standard-Timeout in Sekunden (wird nur verwendet wenn kein http_client übergeben wird)
         """
-        self._http_client = http_client or HttpClient(verify_ssl=verify_ssl)
+        self._http_client = http_client or HttpClient(
+            verify_ssl=verify_ssl,
+            timeout=timeout  # ✅ Timeout übergeben
+        )
         self._async_responses: Dict[str, SoapResponse] = {}
 
     def send(self, request: SoapRequest) -> SoapResponse:
@@ -51,6 +52,8 @@ class HttpSoapRepository(SoapRepository):
             AuthenticationError: Bei Authentifizierungsfehlern
             InvalidResponseError: Bei ungültiger Response
         """
+
+
         try:
             # Auth-Config aus Request-Headers extrahieren
             auth_config = self._extract_auth_config(request)
@@ -61,7 +64,7 @@ class HttpSoapRepository(SoapRepository):
                 body=request.body,
                 headers=request.headers,
                 auth_config=auth_config,
-                timeout=request.timeout
+                timeout=request.timeout  # ✅ Timeout aus Request verwenden
             )
 
             # Response validieren

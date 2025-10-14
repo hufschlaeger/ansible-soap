@@ -15,7 +15,10 @@ class ResponseStatus(Enum):
     HTTP_ERROR = "http_error"
     NETWORK_ERROR = "network_error"
     TIMEOUT = "timeout"
+    FAILURE = "failure"
+    ERROR = "error"
     PARSING_ERROR = "parsing_error"
+    AUTH_ERROR = "auth_error"
 
 
 @dataclass

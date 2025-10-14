@@ -14,13 +14,13 @@ class SoapAction:
     Eine SOAP Action ist typischerweise eine URI oder ein Name einer Operation.
     """
 
-    value: str
+    value: str = ""
     namespace: Optional[str] = None
 
     def __post_init__(self):
         """Validierung bei Erstellung"""
-        if not self.value:
-            raise ValueError("SOAP Action darf nicht leer sein")
+        # if not self.value:
+        #     raise ValueError("SOAP Action darf nicht leer sein")
 
         # Action sollte keine Whitespaces enthalten
         if any(c.isspace() for c in self.value):

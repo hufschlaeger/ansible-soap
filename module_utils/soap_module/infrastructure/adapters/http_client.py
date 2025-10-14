@@ -7,10 +7,8 @@ from dataclasses import dataclass
 import requests
 from requests.auth import HTTPBasicAuth, HTTPDigestAuth
 from requests_ntlm import HttpNtlmAuth
-import ssl
 from urllib3.exceptions import InsecureRequestWarning
 import warnings
-
 
 @dataclass
 class HttpResponse:
@@ -24,11 +22,9 @@ class HttpResponse:
         """Prüft ob Request erfolgreich war"""
         return 200 <= self.status_code < 300
 
-
 class HttpClientError(Exception):
     """Basis-Exception für HTTP Client Fehler"""
     pass
-
 
 class HttpClient:
     """
@@ -92,26 +88,42 @@ class HttpClient:
 
         Args:
             url: Ziel-URL
-            body: Request-Body
-            headers: HTTP Headers
+            body: Request-Body (wird als UTF-8 encodiert)
+            headers: HTTP-Headers
             auth_config: Authentifizierungs-Konfiguration
-            timeout: Timeout in Sekunden (überschreibt Standard)
+            timeout: Request-Timeout (überschreibt Standard)
             proxies: Proxy-Konfiguration
 
         Returns:
-            HttpResponse mit Ergebnis
+            HttpResponse mit Status, Body und Headers
 
         Raises:
-            HttpClientError: Bei Kommunikationsfehlern
+            HttpClientError: Bei HTTP-Fehlern
         """
         session = self._get_session()
         timeout_value = timeout or self.timeout
 
         # Authentifizierung konfigurieren
         auth = self._configure_auth(auth_config)
-
-        # Client-Zertifikat konfigurieren
         cert = self._configure_cert(auth_config)
+
+        # Headers vorbereiten
+        request_headers = headers.copy() if headers else {}
+
+        if not any(k.lower() == 'user-agent' for k in request_headers):
+          request_headers['User-Agent'] = 'Ansible-SOAP-Module/1.0'
+
+        # Body als UTF-8 bytes encodieren
+        if isinstance(body, str):
+            body_data = body.encode('utf-8')
+        else:
+            body_data = body
+
+        # Content-Type mit charset sicherstellen
+        if 'Content-Type' in request_headers:
+            content_type = request_headers['Content-Type']
+            if 'charset' not in content_type.lower():
+                request_headers['Content-Type'] = f"{content_type}; charset=utf-8"
 
         try:
             import time
@@ -119,8 +131,8 @@ class HttpClient:
 
             response = session.post(
                 url=url,
-                data=body.encode('utf-8'),
-                headers=headers or {},
+                data=body_data,
+                headers=request_headers,
                 auth=auth,
                 cert=cert,
                 timeout=timeout_value,
@@ -139,13 +151,10 @@ class HttpClient:
 
         except requests.exceptions.Timeout as e:
             raise HttpClientError(f"Request timeout nach {timeout_value}s: {e}")
-
-        except requests.exceptions.ConnectionError as e:
-            raise HttpClientError(f"Verbindungsfehler: {e}")
-
         except requests.exceptions.SSLError as e:
             raise HttpClientError(f"SSL-Fehler: {e}")
-
+        except requests.exceptions.ConnectionError as e:
+            raise HttpClientError(f"Verbindungsfehler: {e}")
         except requests.exceptions.RequestException as e:
             raise HttpClientError(f"HTTP-Fehler: {e}")
 
@@ -153,21 +162,20 @@ class HttpClient:
             self,
             url: str,
             headers: Optional[Dict[str, str]] = None,
-            timeout: Optional[int] = None
+            auth_config: Optional[Dict[str, Any]] = None,
+            timeout: Optional[int] = None,
+            proxies: Optional[Dict[str, str]] = None
     ) -> HttpResponse:
-        """
-        Sendet einen GET-Request (z.B. für WSDL).
-
-        Args:
-            url: Ziel-URL
-            headers: HTTP Headers
-            timeout: Timeout in Sekunden
-
-        Returns:
-            HttpResponse mit Ergebnis
-        """
+        """Sendet einen GET-Request (z.B. für WSDL)"""
         session = self._get_session()
         timeout_value = timeout or self.timeout
+
+        auth = self._configure_auth(auth_config)
+        cert = self._configure_cert(auth_config)
+
+        request_headers = headers.copy() if headers else {}
+        if 'User-Agent' not in request_headers:
+            request_headers['User-Agent'] = 'Ansible-SOAP-Module/1.0 (Python-requests)'
 
         try:
             import time
@@ -175,9 +183,12 @@ class HttpClient:
 
             response = session.get(
                 url=url,
-                headers=headers or {},
+                headers=request_headers,
+                auth=auth,
+                cert=cert,
                 timeout=timeout_value,
-                verify=self.verify_ssl
+                verify=self.verify_ssl,
+                proxies=proxies
             )
 
             elapsed_ms = (time.time() - start_time) * 1000
@@ -253,7 +264,7 @@ class HttpClient:
 
             if cert_path:
                 if key_path:
-                    return (cert_path, key_path)
+                    return cert_path, key_path
                 return cert_path
 
         return None

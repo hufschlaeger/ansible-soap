@@ -119,13 +119,13 @@ results:
 from ansible.module_utils.basic import AnsibleModule
 
 try:
-    from ansible.module_utils.soap_module.application.dtos.soap_request_dto import SoapRequestDTO
-    from ansible.module_utils.soap_module.application.mappers.dto_mapper import DtoMapper
-    from ansible.module_utils.soap_module.application.use_cases.batch_send_use_case import (
+    from soap_module.application.dtos.soap_request_dto import SOAPRequestDTO
+    from soap_module.application.mappers.dto_mapper import DtoMapper
+    from soap_module.application.use_cases.batch_send_use_case import (
         BatchSendUseCase,
         BatchSendCommand
     )
-    from ansible.module_utils.soap_module.infrastructure.repositories.http_soap_repository import (
+    from soap_module.infrastructure.repositories.http_soap_repository import (
         HttpSoapRepository
     )
     HAS_SOAP_MODULE = True

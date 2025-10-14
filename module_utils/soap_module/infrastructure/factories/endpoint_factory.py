@@ -1,7 +1,7 @@
 """
 Factory für das Erstellen von Endpoints.
 """
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any
 from ...domain.entities.endpoint import Endpoint
 
 
@@ -29,7 +29,6 @@ class EndpointFactory:
             password=params.get('password'),
             cert_path=params.get('cert_path'),
             key_path=params.get('key_path'),
-            soap_version=params.get('soap_version', '1.1'),
             default_timeout=params.get('timeout', 30),
             supported_operations=params.get('supported_operations')
         )
@@ -53,7 +52,6 @@ class EndpointFactory:
             password=config.get('auth', {}).get('password'),
             cert_path=config.get('auth', {}).get('cert_path'),
             key_path=config.get('auth', {}).get('key_path'),
-            soap_version=config.get('soap_version', '1.1'),
             default_timeout=config.get('timeout', 30),
             supported_operations=config.get('operations')
         )
@@ -76,6 +74,5 @@ class EndpointFactory:
             auth_type=kwargs.get('auth_type', 'none'),
             username=kwargs.get('username'),
             password=kwargs.get('password'),
-            soap_version=kwargs.get('soap_version', '1.1'),
             default_timeout=kwargs.get('timeout', 30)
         )

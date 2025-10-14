@@ -24,6 +24,7 @@ class SendSoapRequestCommand:
     soap_action: str
     body_content: str
     namespace: Optional[str] = None
+    namespace_prefix: Optional[str] = None
     custom_headers: Optional[Dict[str, str]] = None
     timeout: Optional[int] = None
     validate_response: bool = True
@@ -125,6 +126,12 @@ class SendSoapRequestUseCase:
                 error_message=f"Ungültige SOAP Action: {e}"
             )
 
+        namespace_declarations = None
+        if command.namespace and command.namespace_prefix:
+          namespace_declarations = {
+            command.namespace_prefix: command.namespace
+          }
+
         # 3. Request senden (mit oder ohne Retry)
         try:
             if command.max_retries > 0:
@@ -132,6 +139,7 @@ class SendSoapRequestUseCase:
                     endpoint=command.endpoint,
                     action=soap_action,
                     body_content=command.body_content,
+                    namespace_declarations=namespace_declarations,
                     custom_headers=command.custom_headers,
                     max_retries=command.max_retries
                 )
@@ -140,6 +148,7 @@ class SendSoapRequestUseCase:
                     endpoint=command.endpoint,
                     action=soap_action,
                     body_content=command.body_content,
+                    namespace_declarations=namespace_declarations,
                     custom_headers=command.custom_headers,
                     use_cache=command.use_cache
                 )

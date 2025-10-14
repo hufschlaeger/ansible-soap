@@ -55,7 +55,7 @@ class Endpoint:
             raise ValueError(f"URL muss http oder https verwenden: {self.url}")
 
         # Auth-Validierung
-        if self.auth_type:
+        if self.auth_type and self.auth_type != "none":
             if self.auth_type not in ["basic", "digest", "ntlm", "certificate"]:
                 raise ValueError(f"Ungültiger auth_type: {self.auth_type}")
 
@@ -78,6 +78,11 @@ class Endpoint:
         # Name generieren falls nicht vorhanden
         if not self.name:
             self.name = self._generate_name_from_url()
+
+    @property
+    def soap_version(self) -> str:
+      """Alias für default_soap_version"""
+      return self.default_soap_version
 
     def _generate_name_from_url(self) -> str:
         """Generiert einen Namen aus der URL"""

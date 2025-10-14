@@ -283,7 +283,7 @@ from ansible.module_utils.basic import AnsibleModule
 # Import der SOAP Module Komponenten
 try:
     from ansible.module_utils.soap_module.application.dtos.soap_request_dto import SoapRequestDTO
-    from ansible.module_utils.soap_module.application.mappers.dto_mapper import DtoMapper
+    from ansible.module_utils.soap_module.application.mappers.dto_mappers import DtoMapper
     from ansible.module_utils.soap_module.application.use_cases.send_soap_request_use_case import (
         SendSoapRequestUseCase
     )

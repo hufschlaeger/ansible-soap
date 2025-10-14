@@ -17,7 +17,7 @@ class SoapRequestDTO:
     body_dict: Optional[Dict[str, Any]] = None
     body_root_tag: str = "Request"
     namespace: Optional[str] = None
-    namespace_prefix: str = "ns"
+    namespace_prefix: Optional[str] = None
     soap_version: str = "1.1"
     soap_header: Optional[str] = None
     headers: Optional[Dict[str, str]] = None
@@ -47,8 +47,8 @@ class SoapRequestDTO:
         if not self.endpoint_url:
             return False, "endpoint_url ist erforderlich"
 
-        if not self.soap_action:
-            return False, "soap_action ist erforderlich"
+        # if not self.soap_action:
+        #     return False, "soap_action ist erforderlich"
 
         if not self.body and not self.body_dict:
             return False, "Entweder body oder body_dict muss angegeben werden"
