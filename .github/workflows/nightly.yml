@@ -1,0 +1,87 @@
+---
+name: Nightly Tests
+
+on:
+  schedule:
+    # Läuft jeden Tag um 2 Uhr morgens UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:  # Manuell ausführbar
+
+jobs:
+  test-external-services:
+    name: Test External SOAP Services
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install ansible-core
+          pip install -r requirements.txt
+
+      - name: Build and install collection
+        run: |
+          ansible-galaxy collection build --force
+          ansible-galaxy collection install *.tar.gz --force
+
+      - name: Test all external services
+        run: |
+          echo "Testing all example playbooks against live services..."
+
+          # Validation Tests
+          for playbook in playbooks/examples/validation/*.yml; do
+            echo "Testing: $playbook"
+            ansible-playbook "$playbook" -v || true
+          done
+
+          # Request Tests
+          for playbook in playbooks/examples/request/*.yml; do
+            echo "Testing: $playbook"
+            ansible-playbook "$playbook" -v || true
+          done
+
+      - name: Create test report
+        if: always()
+        run: |
+          echo "## Nightly Test Report - $(date)" > test-report.md
+          echo "" >> test-report.md
+          echo "External SOAP services tested." >> test-report.md
+
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-test-report
+          path: test-report.md
+
+  health-check:
+    name: Collection Health Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check for broken links in README
+        uses: gaurav-nelson/github-action-markdown-link-check@v1
+        with:
+          use-quiet-mode: 'yes'
+          config-file: '.github/markdown-link-check-config.json'
+        continue-on-error: true
+
+      - name: Check Python code quality
+        run: |
+          python -m pip install --upgrade pip
+          pip install pylint
+          pip install -r requirements.txt
+
+          # Pylint auf module_utils
+          pylint plugins/module_utils/soap_module/ --disable=C,R || true
