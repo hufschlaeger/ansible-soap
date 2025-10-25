@@ -1,1 +1,4 @@
-ansible~=12.1.0
+requests-ntlm
+urllib3
+ansible>=2.9
+requests>=2.25.0

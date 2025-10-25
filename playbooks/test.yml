@@ -1,7 +1,0 @@
-- name: SOAP Request
-  soap_request:  # <- Ansible sucht library/soap_request.py
-    endpoint_url: https://api.example.com
-    soap_action: GetUser
-    body_dict:
-      UserId: "123"
-  register: result

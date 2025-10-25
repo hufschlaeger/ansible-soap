@@ -1,7 +1,3 @@
-# Ansible SOAP Module Project
+# Ansible Collection - hufschlaeger.soap
 
-## Installation
-
-```bash
-pip install -r requirements.txt
-```
+Documentation for the collection.

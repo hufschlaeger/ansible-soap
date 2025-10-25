@@ -1,1 +1,26 @@
-.idea
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Ansible
+*.retry
+.ansible/
+
+# Collection build
+*.tar.gz
+.cache/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
