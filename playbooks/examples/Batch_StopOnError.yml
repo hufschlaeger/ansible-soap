@@ -1,0 +1,40 @@
+# playbooks/examples/BatchStopOnError.yml
+---
+- name: SOAP Batch with Stop on Error
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+    - name: Send requests but stop on first error
+      hufschlaeger.soap_client.soap_batch:
+        requests:
+          - endpoint_url: https://www.dataaccess.com/webservicesserver/NumberConversion.wso
+            soap_action: NumberToWords
+            body_dict:
+              NumberToWords:
+                ubiNum: 100
+            namespace: http://www.dataaccess.com/webservicesserver/
+
+          - endpoint_url: https://invalid-url-will-fail.com/soap
+            soap_action: SomeAction
+            body_dict:
+              Test: {}
+            timeout: 5
+
+          - endpoint_url: https://www.dataaccess.com/webservicesserver/NumberConversion.wso
+            soap_action: NumberToWords
+            body_dict:
+              NumberToWords:
+                ubiNum: 200
+            namespace: http://www.dataaccess.com/webservicesserver/
+
+        stop_on_error: true
+      register: stop_result
+      ignore_errors: true
+
+    - name: Show what happened
+      debug:
+        msg: |
+          Stopped after: {{ stop_result.total }} requests
+          Successful: {{ stop_result.successful }}
+          Failed: {{ stop_result.failed }}

@@ -1,0 +1,45 @@
+# playbooks/examples/Batch_Sequential.yml
+---
+- name: SOAP Batch Sequential Example
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+    - name: Send multiple SOAP requests sequentially
+      hufschlaeger.soap_client.soap_batch:
+        requests:
+          - endpoint_url: https://www.dataaccess.com/webservicesserver/NumberConversion.wso
+            soap_action: NumberToWords
+            body_dict:
+              NumberToWords:
+                ubiNum: 42
+            namespace: http://www.dataaccess.com/webservicesserver/
+
+          - endpoint_url: https://www.dataaccess.com/webservicesserver/NumberConversion.wso
+            soap_action: NumberToWords
+            body_dict:
+              NumberToWords:
+                ubiNum: 123
+            namespace: http://www.dataaccess.com/webservicesserver/
+
+          - endpoint_url: https://www.dataaccess.com/webservicesserver/NumberConversion.wso
+            soap_action: NumberToWords
+            body_dict:
+              NumberToWords:
+                ubiNum: 999
+            namespace: http://www.dataaccess.com/webservicesserver/
+
+        parallel: false
+        stop_on_error: false
+      register: batch_result
+
+    - name: Show batch summary
+      debug:
+        msg: |
+          Total: {{ batch_result.total }}
+          Successful: {{ batch_result.successful }}
+          Failed: {{ batch_result.failed }}
+
+    - name: Show all results
+      debug:
+        var: batch_result.results
