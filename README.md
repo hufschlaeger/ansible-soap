@@ -81,14 +81,14 @@ Then call modules by short name (soap_validate, soap_request, soap_batch).
 
 ## Usage snippets
 - Validate an endpoint quickly
-
+``` yaml 
   - name: Validate endpoint
     hufschlaeger.soap_client.soap_validate:
       endpoint: "https://example.com/service"
       timeout: 5
-
+```
 - Send a SOAP request using body_dict (XML is auto-built)
-
+``` yaml
   - name: Convert number to words
     hufschlaeger.soap_client.soap_request:
       endpoint_url: "https://www.dataaccess.com/webservicesserver/NumberConversion.wso"
@@ -97,9 +97,9 @@ Then call modules by short name (soap_validate, soap_request, soap_batch).
       body_root_tag: "NumberToWords"
       body_dict:
         ubiNum: 42
-
+```
 - Run a small batch
-
+``` yaml
   - name: Batch of SOAP requests
     hufschlaeger.soap_client.soap_batch:
       parallel: true
@@ -111,7 +111,7 @@ Then call modules by short name (soap_validate, soap_request, soap_batch).
         - endpoint_url: "https://example.com/service2"
           soap_action: "urn:Action2"
           body: "<ns:Action2 xmlns:ns=\"urn:ns\"/>"
-
+```
 Refer to the example playbooks for full, working configurations.
 
 ## Configuration notes
