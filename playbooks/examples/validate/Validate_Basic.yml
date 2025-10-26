@@ -1,0 +1,28 @@
+# playbooks/examples/validate/Validate_Basic.yml
+---
+- name: SOAP Validate - Basic endpoint check
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    soap_endpoint: "https://www.dataaccess.com/webservicesserver/NumberConversion.wso"
+
+  tasks:
+    - name: Validate SOAP endpoint is reachable
+      hufschlaeger.soap_client.soap_validate:
+        endpoint: "{{ soap_endpoint }}"
+        timeout: 5
+      register: validation
+
+    - name: Show validation result
+      debug:
+        msg:
+          - "Valid: {{ validation.is_valid }}"
+          - "Status code: {{ validation.status_code | default('n/a') }}"
+          - "Response time (ms): {{ '%.1f' | format(validation.response_time | float) }}"
+          - "Message: {{ validation.message }}"
+
+    - name: Fail if endpoint is not reachable
+      fail:
+        msg: "Endpoint not reachable: {{ validation.message }}"
+      when: not validation.is_valid

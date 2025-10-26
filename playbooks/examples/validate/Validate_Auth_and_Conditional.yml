@@ -1,0 +1,35 @@
+# playbooks/examples/validate/Validate_Auth_and_Conditional.yml
+---
+- name: SOAP Validate - Auth and conditional execution
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    soap_endpoint: "https://api.example.com/soap"
+    soap_username: "{{ lookup('env', 'SOAP_USER') | default('user', true) }}"
+    soap_password: "{{ lookup('env', 'SOAP_PASS') | default('changeme', true) }}"
+
+  tasks:
+    - name: Validate endpoint with basic auth
+      hufschlaeger.soap_client.soap_validate:
+        endpoint: "{{ soap_endpoint }}"
+        auth_type: basic
+        username: "{{ soap_username }}"
+        password: "{{ soap_password }}"
+        timeout: 10
+      register: check
+
+    - name: Abort early if validation failed
+      fail:
+        msg: "Endpoint validation failed: {{ check.message }}"
+      when: not check.is_valid
+
+    - name: Proceed with a sample request when valid
+      hufschlaeger.soap_client.soap_request:
+        endpoint_url: "{{ soap_endpoint }}"
+        soap_action: "NumberToWords"
+        namespace: "http://www.dataaccess.com/webservicesserver/"
+        body_dict:
+          NumberToWords:
+            ubiNum: 42
+      when: check.is_valid

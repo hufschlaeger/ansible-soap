@@ -1,0 +1,30 @@
+# playbooks/examples/validate/Validate_WSDL.yml
+---
+- name: SOAP Validate - WSDL accessibility and operations
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    wsdl_url: "https://www.dataaccess.com/webservicesserver/NumberConversion.wso?WSDL"
+
+  tasks:
+    - name: Validate WSDL accessibility
+      hufschlaeger.soap_client.soap_validate:
+        endpoint: "{{ wsdl_url }}"
+        check_wsdl: true
+        timeout: 10
+      register: wsdl_check
+
+    - name: Show WSDL validation details
+      debug:
+        msg:
+          - "WSDL valid: {{ wsdl_check.wsdl_valid | default('n/a') }}"
+          - "Operations: {{ wsdl_check.wsdl_operations | default([]) | join(', ') }}"
+          - "Message: {{ wsdl_check.message }}"
+
+    - name: Ensure WSDL is valid
+      assert:
+        that:
+          - wsdl_check.is_valid
+          - wsdl_check.wsdl_valid | default(false)
+        fail_msg: "WSDL not valid or not reachable: {{ wsdl_check.message }}"
