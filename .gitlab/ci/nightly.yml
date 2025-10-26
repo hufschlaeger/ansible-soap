@@ -1,8 +1,3 @@
-# ========== NIGHTLY TESTS ==========
-stages:
-  - nightly-test
-  - health-check
-
 # --- Variablen (können global in gitlab-ci.yml überschrieben werden) ---
 variables:
   PYTHON_VERSION: "3.11"

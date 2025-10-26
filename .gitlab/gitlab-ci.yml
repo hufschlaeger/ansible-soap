@@ -6,6 +6,10 @@ stages:
   - unit-tests
   - build
   - integration-test
+  - release
+  - verify
+  - nightly-test
+  - health-check
 
 include:
   - local: '.gitlab/ci/tests.yml'      # Haupt-Pipeline (Tests)
