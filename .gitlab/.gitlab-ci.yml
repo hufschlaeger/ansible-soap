@@ -1,0 +1,9 @@
+# Haupt-CI-Datei, die alle modularen Pipelines inkludiert
+include:
+  - local: '.gitlab/ci/tests.yml'      # Haupt-Pipeline (Tests)
+  - local: '.gitlab/ci/release.yml'    # Release-Pipeline (nur bei Tags)
+  - local: '.gitlab/ci/nightly.yml'    # Nightly Tests (geplant/manuell)
+
+# Globale Variablen (können von allen inkludierten Dateien genutzt werden)
+variables:
+  GALAXY_API_KEY: $GALAXY_API_KEY  # Wird aus GitLab CI/CD-Variablen geladen

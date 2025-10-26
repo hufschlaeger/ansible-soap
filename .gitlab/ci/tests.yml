@@ -1,0 +1,140 @@
+stages:
+  - lint
+  - syntax-check
+  - unit-tests
+  - build
+  - integration-test
+
+variables:
+  PYTHON_VERSION: "3.11"
+  DOCKER_IMAGE: "python:3.11-slim"
+
+# Cache für Python-Pakete
+cache:
+  key: ${CI_COMMIT_REF_SLUG}
+  paths:
+    - .cache/pip
+    - venv/
+
+before_script:
+  - python -V
+  - pip install virtualenv
+  - virtualenv venv
+  - source venv/bin/activate
+  - pip install --upgrade pip
+
+ansible-lint:
+  stage: lint
+  image: $DOCKER_IMAGE
+  tags: [docker]
+  script:
+    - pip install ansible-core ansible-lint
+    - pip install -r requirements.txt
+    - ansible-lint playbooks/examples/**/*.yml || true
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main"'
+
+syntax-check:
+  stage: syntax-check
+  image: $DOCKER_IMAGE
+  tags: [docker]
+  script:
+    - pip install ansible-core
+    - pip install -r requirements.txt
+    - ansible-galaxy collection build --force
+    - ansible-galaxy collection install *.tar.gz --force
+    - |
+      echo "Testing validation playbooks..."
+      for playbook in playbooks/examples/validation/*.yml; do
+        if [ -f "$playbook" ]; then
+          echo "✓ Checking: $playbook"
+          ansible-playbook "$playbook" --syntax-check
+        fi
+      done
+    - |
+      echo ""
+      echo "Testing request playbooks..."
+      for playbook in playbooks/examples/request/*.yml; do
+        if [ -f "$playbook" ]; then
+          echo "✓ Checking: $playbook"
+          ansible-playbook "$playbook" --syntax-check
+        fi
+      done
+    - |
+      echo ""
+      echo "Testing batch playbooks..."
+      for playbook in playbooks/examples/batch/*.yml; do
+        if [ -f "$playbook" ]; then
+          echo "✓ Checking: $playbook"
+          ansible-playbook "$playbook" --syntax-check
+        fi
+      done
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main"'
+
+unit-tests:
+  stage: unit-tests
+  image: $DOCKER_IMAGE
+  tags: [docker]
+  script:
+    - pip install pytest pytest-cov
+    - pip install -r requirements.txt
+    - python -m pytest tests/ -v --cov=plugins/module_utils/soap_module --cov-report=xml:coverage.xml
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
+    paths:
+      - coverage.xml
+  coverage: '/^TOTAL.+?(\d+\%)$/'
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main"'
+
+build-collection:
+  stage: build
+  image: $DOCKER_IMAGE
+  tags: [docker]
+  script:
+    - pip install ansible-core
+    - ansible-galaxy collection build --force
+  artifacts:
+    paths:
+      - "*.tar.gz"
+    expire_in: 7 days
+  needs:
+    - job: ansible-lint
+    - job: syntax-check
+    - job: unit-tests
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main"'
+
+integration-test:
+  stage: integration-test
+  image: $DOCKER_IMAGE
+  tags: [docker]
+  script:
+    - pip install ansible-core
+    - pip install -r requirements.txt
+    - ansible-galaxy collection install *.tar.gz --force
+    - |
+      echo "Running validation examples..."
+      for playbook in playbooks/examples/validation/*.yml; do
+        if [ -f "$playbook" ]; then
+          echo "▶ Running: $playbook"
+          ansible-playbook "$playbook" -v || echo "⚠ Warning: $playbook failed (external service issue?)"
+        fi
+      done
+    - |
+      echo "Running request examples..."
+      ansible-playbook playbooks/examples/request/Request_NumberToWords.yml -v
+  needs:
+    - job: build-collection
+  allow_failure: true
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main"'

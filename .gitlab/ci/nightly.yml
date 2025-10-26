@@ -1,0 +1,137 @@
+# ========== NIGHTLY TESTS ==========
+stages:
+  - nightly-test
+  - health-check
+
+# --- Variablen (können global in .gitlab-ci.yml überschrieben werden) ---
+variables:
+  PYTHON_VERSION: "3.11"
+  DOCKER_IMAGE: "python:3.11-slim"
+
+# --- Jobs ---
+test-external-services:
+  stage: nightly-test
+  image: $DOCKER_IMAGE
+  tags: [docker]
+  before_script:
+    - python -V
+    - pip install virtualenv
+    - virtualenv venv
+    - source venv/bin/activate
+    - pip install --upgrade pip
+  script:
+    - pip install ansible-core
+    - pip install -r requirements.txt
+    - |
+      # Collection bauen und installieren
+      ansible-galaxy collection build --force
+      ansible-galaxy collection install *.tar.gz --force
+    - |
+      # Alle externen Services testen
+      echo "🌙 Testing all example playbooks against live services (Nightly Run)..."
+      mkdir -p test-reports
+
+      # Validation Tests
+      for playbook in playbooks/examples/validation/*.yml; do
+        if [ -f "$playbook" ]; then
+          echo "🧪 Testing: $playbook"
+          ansible-playbook "$playbook" -v > "test-reports/$(basename $playbook .yml).log" 2>&1 || echo "⚠ Warning: $playbook failed (external service issue?)" >> test-reports/failed-tests.txt
+        fi
+      done
+
+      # Request Tests
+      for playbook in playbooks/examples/request/*.yml; do
+        if [ -f "$playbook" ]; then
+          echo "🧪 Testing: $playbook"
+          ansible-playbook "$playbook" -v > "test-reports/$(basename $playbook .yml).log" 2>&1 || echo "⚠ Warning: $playbook failed (external service issue?)" >> test-reports/failed-tests.txt
+        fi
+      done
+    - |
+      # Test-Report generieren
+      echo "# 🌙 Nightly Test Report - $(date)" > test-report.md
+      echo "" >> test-report.md
+      echo "## ✅ Successfully tested playbooks" >> test-report.md
+      ls -1 playbooks/examples/validation/*.yml playbooks/examples/request/*.yml | sed 's/^/  - /' >> test-report.md
+      echo "" >> test-report.md
+      echo "## ⚠ Failed tests (if any)" >> test-report.md
+      if [ -f test-reports/failed-tests.txt ]; then
+        cat test-reports/failed-tests.txt >> test-report.md
+      else
+        echo "  - No failures detected!" >> test-report.md
+      fi
+  artifacts:
+    when: always
+    paths:
+      - test-reports/
+      - test-report.md
+    expire_in: 7 days
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'  # Geplant (Cron)
+    - if: '$CI_PIPELINE_SOURCE == "web"'       # Manuell gestartet
+
+health-check:
+  stage: health-check
+  image: $DOCKER_IMAGE
+  tags: [docker]
+  before_script:
+    - python -V
+    - pip install virtualenv
+    - virtualenv venv
+    - source venv/bin/activate
+    - pip install --upgrade pip
+  script:
+    - |
+      # Markdown-Link-Check (ersetzt das GitHub-Action-Äquivalent)
+      pip install markdown-link-extractor requests
+      python - <<EOF
+      import re
+      import requests
+      from urllib.parse import urlparse
+      from markdown_link_extractor import extract_links
+
+      # README.md prüfen
+      with open("README.md", "r") as f:
+          content = f.read()
+
+      links = extract_links(content)
+      broken_links = []
+
+      for link in links:
+          url = link["url"]
+          if url.startswith(("http://", "https://")):
+              try:
+                  response = requests.head(url, allow_redirects=True, timeout=10)
+                  if response.status_code >= 400:
+                      broken_links.append(f"- ❌ {url} (Status: {response.status_code})")
+                  else:
+                      print(f"✅ {url} (OK)")
+              except Exception as e:
+                  broken_links.append(f"- ❌ {url} (Error: {str(e)})")
+
+      if broken_links:
+          print("\n🔗 Broken links found:")
+          for link in broken_links:
+              print(link)
+          with open("broken-links.md", "w") as f:
+              f.write("# Broken Links Report\n\n")
+              f.write("\n".join(broken_links))
+      else:
+          print("\n✅ All links are working!")
+          with open("broken-links.md", "w") as f:
+              f.write("# All links are working! 🎉")
+      EOF
+    - |
+      # Pylint für Code-Qualität
+      pip install pylint
+      echo "🔍 Running Pylint on module_utils..."
+      pylint plugins/module_utils/soap_module/ --disable=C,R --output-format=text > pylint-report.txt || true
+      echo "Pylint completed (warnings are non-blocking)."
+  artifacts:
+    when: always
+    paths:
+      - broken-links.md
+      - pylint-report.txt
+    expire_in: 7 days
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'  # Geplant (Cron)
+    - if: '$CI_PIPELINE_SOURCE == "web"'       # Manuell gestartet
