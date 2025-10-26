@@ -3,7 +3,7 @@ stages:
   - nightly-test
   - health-check
 
-# --- Variablen (können global in .gitlab-ci.yml überschrieben werden) ---
+# --- Variablen (können global in gitlab-ci.yml überschrieben werden) ---
 variables:
   PYTHON_VERSION: "3.11"
   DOCKER_IMAGE: "python:3.11-slim"
