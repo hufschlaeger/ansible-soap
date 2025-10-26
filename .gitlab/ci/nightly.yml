@@ -65,7 +65,7 @@ test-external-services:
     - if: '$CI_PIPELINE_SOURCE == "web"'       # Manuell gestartet
 
 health-check:
-  stage: health-check
+  stage: nightly-test
   image: $DOCKER_IMAGE
   tags: [docker]
   before_script:
