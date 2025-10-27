@@ -78,7 +78,7 @@ health-check:
   script:
     - |
       # Markdown-Link-Check (ersetzt das GitHub-Action-Äquivalent)
-      python .gitlab/ci/markdown-link-check.py --config .gitlab/helpers/check_links.py
+      python .gitlab/helpers/check_links.py
     - |
       echo "🔍 Running Pylint on module_utils..."
       pylint plugins/module_utils/soap_module/ --disable=C,R --output-format=text > pylint-report.txt || true
