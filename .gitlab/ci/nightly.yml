@@ -82,9 +82,9 @@ health-check:
       import re
       import requests
       from urllib.parse import urlparse
-      import mistune  # Alternative to markdown_link_extractor
+      import mistune  # Updated for mistune>=3.0.0
       
-      class LinkExtractor(mistune.ASTRenderer):
+      class LinkExtractor(mistune.BaseRenderer):  # Changed from ASTRenderer to BaseRenderer
           def __init__(self):
               self.links = []
       
@@ -126,7 +126,6 @@ health-check:
           print("\n✅ All links are working!")
           with open("broken-links.md", "w") as f:
               f.write("# All links are working! 🎉")
-
       EOF
     - |
       # Pylint für Code-Qualität
