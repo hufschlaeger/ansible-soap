@@ -74,62 +74,12 @@ health-check:
     - virtualenv venv
     - source venv/bin/activate
     - pip install --upgrade pip
+    - pip install mistune requests pyline
   script:
     - |
       # Markdown-Link-Check (ersetzt das GitHub-Action-Äquivalent)
-      pip install mistune requests
-      python - <<EOF
-      import re
-      import requests
-      from urllib.parse import urlparse
-      import mistune  # Updated for mistune>=3.0.0
-      
-      class LinkExtractor(mistune.BaseRenderer):  # Changed from ASTRenderer to BaseRenderer
-          def __init__(self):
-              self.links = []
-      
-          def link(self, link, title=None, text=None):
-              self.links.append({"url": link, "text": text})
-      
-      # README.md prüfen
-      with open("README.md", "r") as f:
-          content = f.read()
-      
-      # Extract links using mistune
-      renderer = LinkExtractor()
-      markdown = mistune.create_markdown(renderer=renderer)
-      markdown(content)
-      links = renderer.links
-      
-      broken_links = []
-      
-      for link in links:
-          url = link["url"]
-          if url.startswith(("http://", "https://")):
-              try:
-                  response = requests.head(url, allow_redirects=True, timeout=10)
-                  if response.status_code >= 400:
-                      broken_links.append(f"- ❌ {url} (Status: {response.status_code})")
-                  else:
-                      print(f"✅ {url} (OK)")
-              except Exception as e:
-                  broken_links.append(f"- ❌ {url} (Error: {str(e)})")
-      
-      if broken_links:
-          print("\n🔗 Broken links found:")
-          for link in broken_links:
-              print(link)
-          with open("broken-links.md", "w") as f:
-              f.write("# Broken Links Report\n\n")
-              f.write("\n".join(broken_links))
-      else:
-          print("\n✅ All links are working!")
-          with open("broken-links.md", "w") as f:
-              f.write("# All links are working! 🎉")
-      EOF
+      python .gitlab/ci/markdown-link-check.py --config .gitlab/helpers/check_links.py
     - |
-      # Pylint für Code-Qualität
-      pip install pylint
       echo "🔍 Running Pylint on module_utils..."
       pylint plugins/module_utils/soap_module/ --disable=C,R --output-format=text > pylint-report.txt || true
       echo "Pylint completed (warnings are non-blocking)."
