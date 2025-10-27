@@ -77,20 +77,32 @@ health-check:
   script:
     - |
       # Markdown-Link-Check (ersetzt das GitHub-Action-Äquivalent)
-      pip install markdown-link-extractor requests
+      pip install mistune requests
       python - <<EOF
       import re
       import requests
       from urllib.parse import urlparse
-      from markdown_link_extractor import extract_links
-
+      import mistune  # Alternative to markdown_link_extractor
+      
+      class LinkExtractor(mistune.ASTRenderer):
+          def __init__(self):
+              self.links = []
+      
+          def link(self, link, title=None, text=None):
+              self.links.append({"url": link, "text": text})
+      
       # README.md prüfen
       with open("README.md", "r") as f:
           content = f.read()
-
-      links = extract_links(content)
+      
+      # Extract links using mistune
+      renderer = LinkExtractor()
+      markdown = mistune.create_markdown(renderer=renderer)
+      markdown(content)
+      links = renderer.links
+      
       broken_links = []
-
+      
       for link in links:
           url = link["url"]
           if url.startswith(("http://", "https://")):
@@ -102,7 +114,7 @@ health-check:
                       print(f"✅ {url} (OK)")
               except Exception as e:
                   broken_links.append(f"- ❌ {url} (Error: {str(e)})")
-
+      
       if broken_links:
           print("\n🔗 Broken links found:")
           for link in broken_links:
@@ -114,6 +126,7 @@ health-check:
           print("\n✅ All links are working!")
           with open("broken-links.md", "w") as f:
               f.write("# All links are working! 🎉")
+
       EOF
     - |
       # Pylint für Code-Qualität
