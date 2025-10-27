@@ -27,7 +27,7 @@ test-external-services:
       mkdir -p test-reports
 
       # Validation Tests
-      for playbook in playbooks/examples/validation/*.yml; do
+      for playbook in playbooks/examples/validate/*.yml; do
         if [ -f "$playbook" ]; then
           echo "🧪 Testing: $playbook"
           ansible-playbook "$playbook" -v > "test-reports/$(basename $playbook .yml).log" 2>&1 || echo "⚠ Warning: $playbook failed (external service issue?)" >> test-reports/failed-tests.txt
