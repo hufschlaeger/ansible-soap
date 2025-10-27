@@ -46,7 +46,7 @@ test-external-services:
       echo "# 🌙 Nightly Test Report - $(date)" > test-report.md
       echo "" >> test-report.md
       echo "## ✅ Successfully tested playbooks" >> test-report.md
-      ls -1 playbooks/examples/validation/*.yml playbooks/examples/request/*.yml | sed 's/^/  - /' >> test-report.md
+      ls -1 playbooks/examples/validate/*.yml playbooks/examples/request/*.yml | sed 's/^/  - /' >> test-report.md
       echo "" >> test-report.md
       echo "## ⚠ Failed tests (if any)" >> test-report.md
       if [ -f test-reports/failed-tests.txt ]; then
