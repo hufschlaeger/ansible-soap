@@ -156,14 +156,23 @@ from ansible.module_utils.basic import AnsibleModule
 import time
 
 try:
+  from ansible_collections.hufschlaeger.soap_client.plugins.module_utils.soap_module.domain.entities.endpoint import Endpoint
   from ansible_collections.hufschlaeger.soap_client.plugins.module_utils.soap_module.application.use_cases.validate_endpoint_use_case import \
-    ValidateEndpointUseCase
+    ValidateEndpointUseCase, ValidateEndpointCommand
+  from ansible_collections.hufschlaeger.soap_client.plugins.module_utils.soap_module.infrastructure.repositories.http_soap_repository import \
+    HttpSoapRepository
+  HAS_SOAP_MODULE = True
 except ImportError:
   try:
+    from ansible.module_utils.soap_module.domain.entities.endpoint import Endpoint
     from ansible.module_utils.soap_module.application.use_cases.validate_endpoint_use_case import \
-      ValidateEndpointUseCase
+      ValidateEndpointUseCase, ValidateEndpointCommand
+    from ansible.module_utils.soap_module.infrastructure.repositories.http_soap_repository import \
+      HttpSoapRepository
+    HAS_SOAP_MODULE = True
   except ImportError as e:
-    raise ImportError(f"Could not import SOAP validation utilities: {e}")
+    HAS_SOAP_MODULE = False
+    SOAP_MODULE_IMPORT_ERROR = str(e)
 
 
 def run_module():
@@ -199,57 +208,89 @@ def run_module():
     ],
   )
 
+  if not HAS_SOAP_MODULE:
+    module.fail_json(
+      msg='SOAP Module could not be imported',
+      error=SOAP_MODULE_IMPORT_ERROR,
+      **result
+    )
+
   if module.check_mode:
-    result['message'] = 'Check mode - validation skipped'
+    result['msg'] = 'Check mode - validation skipped'
     module.exit_json(**result)
 
   try:
     start_time = time.time()
 
-    # Use Case ausführen
-    use_case = ValidateEndpointUseCase()
-    validation_result = use_case.execute(
-      endpoint=module.params['endpoint'],
-      timeout=module.params['timeout'],
-      validate_certs=module.params['validate_certs'],
-      check_wsdl=module.params['check_wsdl'],
-      auth_type=module.params['auth_type'],
-      username=module.params['username'],
-      password=module.params['password']
-    )
+    # Repository erstellen und Use Case ausführen
+    with HttpSoapRepository(
+      verify_ssl=module.params['validate_certs'],
+      timeout=module.params['timeout']
+    ) as repository:
+      use_case = ValidateEndpointUseCase(repository)
+
+      # Endpoint-Entity erstellen
+      endpoint_entity = Endpoint(
+        url=module.params['endpoint'],
+        auth_type=module.params.get('auth_type'),
+        username=module.params.get('username'),
+        password=module.params.get('password'),
+        verify_ssl=module.params['validate_certs'],
+        default_timeout=module.params['timeout'],
+      )
+
+      # Command erstellen
+      wsdl_url = None
+      if module.params['check_wsdl']:
+        # Wenn bereits eine WSDL-URL übergeben wurde, verwenden
+        if isinstance(module.params['endpoint'], str) and 'wsdl' in module.params['endpoint'].lower():
+          wsdl_url = module.params['endpoint']
+      command = ValidateEndpointCommand(
+        endpoint=endpoint_entity,
+        check_connectivity=True,
+        check_wsdl=module.params['check_wsdl'],
+        wsdl_url=wsdl_url
+      )
+
+      validation_result = use_case.execute(command)
 
     end_time = time.time()
 
     # Ergebnisse aufbereiten
     result['is_valid'] = validation_result.is_valid
-    result['message'] = validation_result.message
+    # message aus error_message oder zusammengesetzt
+    if validation_result.error_message:
+      result['msg'] = validation_result.error_message
+    else:
+      parts = []
+      parts.append('Endpoint reachable' if validation_result.is_reachable else 'Endpoint not reachable')
+      if module.params['check_wsdl']:
+        parts.append('WSDL OK' if validation_result.has_wsdl else 'WSDL not available')
+      result['msg'] = '; '.join(parts)
+
     result['response_time'] = (end_time - start_time) * 1000  # in ms
 
-    if hasattr(validation_result, 'status_code'):
-      result['status_code'] = validation_result.status_code
-
-    if hasattr(validation_result, 'ssl_valid'):
-      result['ssl_valid'] = validation_result.ssl_valid
-
+    # Zusätzliche Felder
+    result['reachable'] = validation_result.is_reachable
     if module.params['check_wsdl']:
-      result['wsdl_valid'] = validation_result.wsdl_valid
-      if validation_result.wsdl_valid and hasattr(validation_result, 'operations'):
-        result['wsdl_operations'] = validation_result.operations
+      result['wsdl_valid'] = validation_result.has_wsdl
+      if validation_result.wsdl_operations:
+        result['wsdl_operations'] = validation_result.wsdl_operations
 
     module.exit_json(**result)
 
   except ConnectionError as ce:
-    result['message'] = f'Connection error: {str(ce)}'
+    result['msg'] = f'Connection error: {str(ce)}'
     result['is_valid'] = False
     module.exit_json(**result)
 
   except TimeoutError as te:
-    result['message'] = f'Timeout error: {str(te)}'
+    result['msg'] = f'Timeout error: {str(te)}'
     result['is_valid'] = False
     module.exit_json(**result)
 
   except Exception as e:
-    result['message'] = f'Validation error: {str(e)}'
+    result['msg'] = f'Validation error: {str(e)}'
     result['is_valid'] = False
     module.fail_json(**result)
 

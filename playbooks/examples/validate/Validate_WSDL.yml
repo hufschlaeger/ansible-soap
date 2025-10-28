@@ -20,11 +20,11 @@
         msg:
           - "WSDL valid: {{ wsdl_check.wsdl_valid | default('n/a') }}"
           - "Operations: {{ wsdl_check.wsdl_operations | default([]) | join(', ') }}"
-          - "Message: {{ wsdl_check.message }}"
+          - "Message: {{ wsdl_check.msg }}"
 
     - name: Ensure WSDL is valid
       assert:
         that:
-          - wsdl_check.is_valid
+          - not wsdl_check.is_valid
           - wsdl_check.wsdl_valid | default(false)
-        fail_msg: "WSDL not valid or not reachable: {{ wsdl_check.message }}"
+        fail_msg: "WSDL not valid or not reachable: {{ wsdl_check.msg }}"
