@@ -10,9 +10,9 @@
   tasks:
     - name: Validate WSDL accessibility
       hufschlaeger.soap_client.soap_validate:
-        endpoint: "{{ wsdl_url }}"
+        endpoint_url: "{{ wsdl_url }}"
         check_wsdl: true
-        timeout: 10
+        timeout: 30
       register: wsdl_check
 
     - name: Show WSDL validation details

@@ -179,7 +179,7 @@ def run_module():
   """Hauptfunktion des Validierungs-Moduls"""
 
   module_args = dict(
-    endpoint=dict(type='str', required=True),
+    endpoint_url=dict(type='str', required=True),
     timeout=dict(type='int', required=False, default=10),
     validate_certs=dict(type='bool', required=False, default=True),
     check_wsdl=dict(type='bool', required=False, default=False),
@@ -231,7 +231,7 @@ def run_module():
 
       # Endpoint-Entity erstellen
       endpoint_entity = Endpoint(
-        url=module.params['endpoint'],
+        url=module.params['endpoint_url'],
         auth_type=module.params.get('auth_type'),
         username=module.params.get('username'),
         password=module.params.get('password'),
@@ -243,8 +243,8 @@ def run_module():
       wsdl_url = None
       if module.params['check_wsdl']:
         # Wenn bereits eine WSDL-URL übergeben wurde, verwenden
-        if isinstance(module.params['endpoint'], str) and 'wsdl' in module.params['endpoint'].lower():
-          wsdl_url = module.params['endpoint']
+        if isinstance(module.params['endpoint_url'], str) and 'wsdl' in module.params['endpoint_url'].lower():
+          wsdl_url = module.params['endpoint_url']
       command = ValidateEndpointCommand(
         endpoint=endpoint_entity,
         check_connectivity=True,
