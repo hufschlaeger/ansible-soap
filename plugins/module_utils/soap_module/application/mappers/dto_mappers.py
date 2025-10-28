@@ -52,9 +52,12 @@ class DtoMapper:
     body_content = dto.body
     if not body_content and dto.body_dict:
       from ...domain.value_objects.xml_body import XmlBody
+
+      root_tag = None if dto.skip_request_wrapper else dto.body_root_tag
+
       xml_body = XmlBody.from_dict(
         dto.body_dict,
-        root_tag=dto.body_root_tag,
+        root_tag=root_tag,
         namespace=dto.namespace,  # add this
         namespace_prefix=dto.namespace_prefix
       )

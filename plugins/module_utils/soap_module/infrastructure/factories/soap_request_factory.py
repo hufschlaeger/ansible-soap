@@ -27,18 +27,18 @@ class SoapRequestFactory:
 
     # Body-Content erstellen
     body_content = params.get('body')
-    if not body_content and params.get('body_dict'):
-      # ✅ DEBUG
-      print(f"DEBUG: namespace={params.get('namespace')}")
-      print(f"DEBUG: namespace_prefix={params.get('namespace_prefix')}")
 
+    root_tag = None if params.get('skip_request_wrapper', False) else params.get('body_root_tag', 'Request')
+
+    if not body_content and params.get('body_dict'):
       # Aus Dictionary erstellen MIT Namespace
       xml_body = XmlBody.from_dict(
         params['body_dict'],
-        root_tag=params.get('body_root_tag', 'Request'),
+        root_tag=root_tag,
         namespace=params.get('namespace'),
-        namespace_prefix=params.get('namespace_prefix')
+        namespace_prefix=params.get('namespace_prefix'),
       )
+      body_content = xml_body.to_string()
 
 
     # SOAP Envelope erstellen
@@ -52,9 +52,7 @@ class SoapRequestFactory:
       if namespace_prefix:
         envelope = envelope.with_namespace(namespace_prefix, params['namespace'])
 
-    # ✅ DEBUG: Finaler Request Body
     final_body = envelope.build()
-    print(f"DEBUG: final_body={final_body}")
 
     # Request erstellen
     request = SoapRequest(

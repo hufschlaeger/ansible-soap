@@ -29,6 +29,7 @@ class ActionModule(ActionBase):
       'body_root_tag',
       'namespace',
       'namespace_prefix',
+      'skip_request_wrapper',
       'soap_version',
       'soap_header',
       'headers',

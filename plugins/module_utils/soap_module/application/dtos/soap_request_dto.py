@@ -18,6 +18,7 @@ class SoapRequestDTO:
     body_root_tag: str = "Request"
     namespace: Optional[str] = None
     namespace_prefix: Optional[str] = None
+    skip_request_wrapper: Optional[bool] = False
     soap_version: str = "1.1"
     soap_header: Optional[str] = None
     headers: Optional[Dict[str, str]] = None
