@@ -96,6 +96,7 @@ health-check:
 notify-gotify:
   stage: nightly-test
   image: $DOCKER_IMAGE
+  needs: ["test-external-services", "health-check"]
   tags: [ docker ]
   before_script:
     - python -V
