@@ -95,53 +95,19 @@ health-check:
 
 notify-gotify:
   stage: nightly-test
-  image: alpine:latest  # Leichtgewichtiges Image mit curl
-  tags: [docker]
-  needs: ["test-external-services", "health-check"]
+  image: $DOCKER_IMAGE
+  tags: [ docker ]
   before_script:
-    - apk add --no-cache curl jq  # jq für JSON-Verarbeitung (optional)
+    - python -V
+    - pip install virtualenv
+    - virtualenv venv
+    - source venv/bin/activate
+    - pip install --upgrade pip
+    - pip install requests
   script:
     - |
-      # Gotify-Nachricht basierend auf den Job-Ergebnissen
-      if [ -f "test-reports/failed-tests.txt" ] && [ -s "test-reports/failed-tests.txt" ]; then
-        # ❌ Es gab Fehler
-        MESSAGE="🚨 *Nightly Tests FAILED* (${CI_COMMIT_SHORT_SHA})
-        ➡ <${CI_PIPELINE_URL}|View Pipeline>
-        ➡ <${CI_PROJECT_URL}/-/jobs/${CI_JOB_ID}/artifacts/file/test-report.md|Test Report>
-        ➡ <${CI_PROJECT_URL}/-/jobs/${CI_JOB_ID}/artifacts/file/broken-links.md|Broken Links>
-        ➡ *Failed Tests*: $(cat test-reports/failed-tests.txt | wc -l)"
-        PRIORITY=5  # Hoch (5 = kritisch)
-      else
-        # ✅ Alle Tests erfolgreich
-        MESSAGE="✅ *Nightly Tests PASSED* (${CI_COMMIT_SHORT_SHA})
-        ➡ <${CI_PIPELINE_URL}|View Pipeline>
-        ➡ <${CI_PROJECT_URL}/-/jobs/${CI_JOB_ID}/artifacts/file/test-report.md|Test Report>"
-        PRIORITY=1  # Niedrig (1 = informativ)
-      fi
-
-      # Gotify-API aufrufen
-      curl \
-        -X POST \
-        -H "Content-Type: application/json" \
-        -H "X-Gotify-Key: ${GOTIFY_APP_TOKEN}" \
-        -d "{
-          \"message\": \"${MESSAGE}\",
-          \"priority\": ${PRIORITY},
-          \"title\": \"🌙 Nightly Tests: ${CI_PROJECT_NAME}\",
-          \"extras\": {
-            \"client::display\": {
-              \"contentType\": \"text/markdown\"
-            },
-            \"client::notification\": {
-              \"click\": {
-                \"url\": \"${CI_PIPELINE_URL}\"
-              }
-            }
-          }
-        }" \
-        "${GOTIFY_URL}/message?token=${GOTIFY_APP_TOKEN}"
-
-      echo "Gotify notification sent!"
+      # Markdown-Link-Check (ersetzt das GitHub-Action-Äquivalent)
+      python .gitlab/helpers/gotify.py
   rules:
     - if: '$CI_PIPELINE_SOURCE == "schedule"'  # Nur bei geplanten Nightly-Läufen
     - if: '$CI_PIPELINE_SOURCE == "web"'       # Optional: Auch bei manuellem Trigger
