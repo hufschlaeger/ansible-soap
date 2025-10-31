@@ -1,4 +1,11 @@
 import unittest
+import sys
+import os
+
+# Ensure project root is on sys.path so 'plugins' package can be imported
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
 
 # We will import the module under test and monkey-patch its dependencies
 import importlib
@@ -91,6 +98,17 @@ class TestSoapRequestModule(unittest.TestCase):
         # Ensure a fresh import each time
         if "plugins.modules.soap_request" in list(importlib.sys.modules.keys()):
             del importlib.sys.modules["plugins.modules.soap_request"]
+
+        # Inject a fake 'ansible.module_utils.basic' with our FakeAnsibleModule
+        import types
+        fake_ansible = types.ModuleType("ansible")
+        fake_module_utils = types.ModuleType("ansible.module_utils")
+        fake_basic = types.ModuleType("ansible.module_utils.basic")
+        fake_basic.AnsibleModule = FakeAnsibleModule
+        sys.modules["ansible"] = fake_ansible
+        sys.modules["ansible.module_utils"] = fake_module_utils
+        sys.modules["ansible.module_utils.basic"] = fake_basic
+
         mod = importlib.import_module("plugins.modules.soap_request")
 
         # Patch AnsibleModule
