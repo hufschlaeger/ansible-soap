@@ -15,7 +15,7 @@ release:
     - source venv/bin/activate
     - pip install --upgrade pip
   script:
-    - pip install ansible-core
+    - pip install ansible-core requests lxml requests-ntlm
     - |
       # Version aus Tag extrahieren
       VERSION=${CI_COMMIT_TAG#v}
