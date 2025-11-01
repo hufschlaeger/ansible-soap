@@ -237,28 +237,37 @@ changed:
 
 from ansible.module_utils.basic import AnsibleModule
 
+# Try to import SOAP module dependencies from multiple possible locations
+HAS_SOAP_MODULE = False
+SOAP_MODULE_IMPORT_ERROR = None
+
+# 1) In-repo path (when running from source/tests)
 try:
-  from ansible_collections.hufschlaeger.soap_client.plugins.module_utils.soap_module.application.dtos.soap_request_dto import \
-    SoapRequestDTO
-  from ansible_collections.hufschlaeger.soap_client.plugins.module_utils.soap_module.application.mappers.dto_mappers import \
-    DtoMapper
-  from ansible_collections.hufschlaeger.soap_client.plugins.module_utils.soap_module.application.use_cases.send_soap_request_use_case import \
-    SendSoapRequestUseCase
-  from ansible_collections.hufschlaeger.soap_client.plugins.module_utils.soap_module.infrastructure.repositories.http_soap_repository import \
-    HttpSoapRepository
-
+  from plugins.module_utils.soap_module.application.dtos.soap_request_dto import SoapRequestDTO
+  from plugins.module_utils.soap_module.application.mappers.dto_mappers import DtoMapper
+  from plugins.module_utils.soap_module.application.use_cases.send_soap_request_use_case import SendSoapRequestUseCase
+  from plugins.module_utils.soap_module.infrastructure.repositories.http_soap_repository import HttpSoapRepository
   HAS_SOAP_MODULE = True
-except ImportError:
+except Exception as e1:
+  # 2) Installed as Ansible collection
   try:
-    from ansible.module_utils.soap_module.application.dtos.soap_request_dto import SoapRequestDTO
-    from ansible.module_utils.soap_module.application.mappers.dto_mappers import DtoMapper
-    from ansible.module_utils.soap_module.application.use_cases.send_soap_request_use_case import SendSoapRequestUseCase
-    from ansible.module_utils.soap_module.infrastructure.repositories.http_soap_repository import HttpSoapRepository
-
+    from ansible_collections.hufschlaeger.soap_client.plugins.module_utils.soap_module.application.dtos.soap_request_dto import SoapRequestDTO
+    from ansible_collections.hufschlaeger.soap_client.plugins.module_utils.soap_module.application.mappers.dto_mappers import DtoMapper
+    from ansible_collections.hufschlaeger.soap_client.plugins.module_utils.soap_module.application.use_cases.send_soap_request_use_case import SendSoapRequestUseCase
+    from ansible_collections.hufschlaeger.soap_client.plugins.module_utils.soap_module.infrastructure.repositories.http_soap_repository import HttpSoapRepository
     HAS_SOAP_MODULE = True
-  except ImportError as e:
-    HAS_SOAP_MODULE = False
-    SOAP_MODULE_IMPORT_ERROR = str(e)
+  except Exception as e2:
+    # 3) Legacy module_utils path (older installs)
+    try:
+      from ansible.module_utils.soap_module.application.dtos.soap_request_dto import SoapRequestDTO
+      from ansible.module_utils.soap_module.application.mappers.dto_mappers import DtoMapper
+      from ansible.module_utils.soap_module.application.use_cases.send_soap_request_use_case import SendSoapRequestUseCase
+      from ansible.module_utils.soap_module.infrastructure.repositories.http_soap_repository import HttpSoapRepository
+      HAS_SOAP_MODULE = True
+    except Exception as e3:
+      HAS_SOAP_MODULE = False
+      # Prefer the last error; earlier ones included for context
+      SOAP_MODULE_IMPORT_ERROR = str(e3 or e2 or e1)
 
 
 def run_module():
