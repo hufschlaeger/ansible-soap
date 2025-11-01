@@ -5,7 +5,7 @@ Definiert die Schnittstelle für die Persistierung/Kommunikation.
 from abc import ABC, abstractmethod
 from typing import Optional
 from ..entities.soap_request import SoapRequest
-from ..entities.soap_response import SoapResponse, ResponseStatus
+from ..entities.soap_response import SoapResponse
 
 
 class SoapRepository(ABC):
