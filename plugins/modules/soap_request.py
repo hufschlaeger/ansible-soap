@@ -190,6 +190,7 @@ try:
     DtoMapper,
     BatchSendUseCase,
     BatchSendCommand,
+    SendSoapRequestUseCase,
     HttpSoapRepository
   )
 
@@ -203,6 +204,7 @@ except ImportError as collection_error:
       DtoMapper,
       BatchSendUseCase,
       BatchSendCommand,
+      SendSoapRequestUseCase,
       HttpSoapRepository
     )
 
@@ -220,30 +222,34 @@ except ImportError as collection_error:
 
 
 def run_module():
-  """Main module execution function"""
-
   module_args = dict(
-    requests=dict(type='list', required=True, elements='dict'),
-    parallel=dict(type='bool', required=False, default=False),
-    max_workers=dict(type='int', required=False, default=5),
-    stop_on_error=dict(type='bool', required=False, default=False),
+    endpoint_url=dict(type='str', required=True),
+    soap_action=dict(type='str', required=False, default=''),
+    body=dict(type='str', required=False),
+    body_dict=dict(type='dict', required=False),
+    body_root_tag=dict(type='str', required=False, default='Request'),
+    namespace=dict(type='str', required=False),
+    namespace_prefix=dict(type='str', required=False, default='ns'),
+    skip_request_wrapper=dict(type='bool', required=False, default=False),
+    soap_version=dict(type='str', required=False, default='1.1'),
+    soap_header=dict(type='str', required=False),
+    headers=dict(type='dict', required=False),
+    timeout=dict(type='int', required=False, default=30),
+    auth_type=dict(type='str', required=False, default='none'),
+    username=dict(type='str', required=False),
+    password=dict(type='str', required=False),
+    cert_path=dict(type='str', required=False),
+    key_path=dict(type='str', required=False),
+    validate=dict(type='bool', required=False, default=True),
+    use_cache=dict(type='bool', required=False, default=False),
+    max_retries=dict(type='int', required=False, default=0),
+    extract_xpath=dict(type='str', required=False),
+    strip_namespaces=dict(type='bool', required=False, default=False),
     validate_certs=dict(type='bool', required=False, default=True),
   )
 
-  result = dict(
-    changed=False,
-    total=0,
-    successful=0,
-    failed=0,
-    results=[]
-  )
+  module = AnsibleModule(argument_spec=module_args, supports_check_mode=True)
 
-  module = AnsibleModule(
-    argument_spec=module_args,
-    supports_check_mode=True
-  )
-
-  # Check if SOAP module is available
   if not HAS_SOAP_MODULE:
     module.fail_json(
       msg='SOAP Module could not be imported',
@@ -251,89 +257,52 @@ def run_module():
       hint='Ensure collection is installed: ansible-galaxy collection install hufschlaeger.soap_client'
     )
 
-  if module.check_mode:
-    result['msg'] = 'Check mode: would process {} requests'.format(
-      len(module.params['requests'])
-    )
-    result['total'] = len(module.params['requests'])
-    module.exit_json(**result)
-
   try:
-    # Convert request parameters to DTOs
-    request_dtos = []
-    for idx, req_params in enumerate(module.params['requests']):
-      # Set defaults for optional parameters
-      req_params.setdefault('body_root_tag', 'Request')
-      req_params.setdefault('namespace_prefix', 'ns')
-      req_params.setdefault('soap_version', '1.1')
-      req_params.setdefault('timeout', 30)
-      req_params.setdefault('auth_type', 'none')
-      req_params.setdefault('validate', True)
-      req_params.setdefault('use_cache', False)
-      req_params.setdefault('max_retries', 0)
-      req_params.setdefault('strip_namespaces', False)
-      req_params.setdefault('skip_request_wrapper', False)
-
-      # Create DTO
-      try:
-        dto = SoapRequestDTO(**req_params)
-      except TypeError as e:
-        module.fail_json(
-          msg=f'Invalid parameters for request {idx}: {str(e)}',
-          request_index=idx,
-          **result
-        )
-
-      # Validate input
-      is_valid, error = dto.validate_input()
-      if not is_valid:
-        module.fail_json(
-          msg=f'Request {idx} validation failed: {error}',
-          request_index=idx,
-          validation_error=error,
-          **result
-        )
-
-      request_dtos.append(dto)
-
-    # Initialize repository and use case
-    repository = HttpSoapRepository(
-      verify_ssl=module.params['validate_certs']
-    )
-    use_case = BatchSendUseCase(repository)
-
-    # Convert DTOs to commands
-    commands = [DtoMapper.dto_to_command(dto) for dto in request_dtos]
-
-    # Create batch command
-    batch_command = BatchSendCommand(
-      requests=commands,
-      parallel=module.params['parallel'],
-      max_workers=module.params['max_workers'],
-      stop_on_error=module.params['stop_on_error']
+    request_dto = SoapRequestDTO(
+      endpoint_url=module.params.get('endpoint_url'),
+      soap_action=module.params.get('soap_action', ''),
+      body=module.params.get('body'),
+      body_dict=module.params.get('body_dict'),
+      body_root_tag=module.params.get('body_root_tag', 'Request'),
+      namespace=module.params.get('namespace'),
+      namespace_prefix=module.params.get('namespace_prefix', 'ns'),
+      skip_request_wrapper=module.params.get('skip_request_wrapper', False),
+      soap_version=module.params.get('soap_version', '1.1'),
+      soap_header=module.params.get('soap_header'),
+      headers=module.params.get('headers'),
+      timeout=module.params.get('timeout', 30),
+      auth_type=module.params.get('auth_type', 'none'),
+      username=module.params.get('username'),
+      password=module.params.get('password'),
+      cert_path=module.params.get('cert_path'),
+      key_path=module.params.get('key_path'),
+      validate=module.params.get('validate', True),
+      use_cache=module.params.get('use_cache', False),
+      max_retries=module.params.get('max_retries', 0),
+      extract_xpath=module.params.get('extract_xpath'),
+      strip_namespaces=module.params.get('strip_namespaces', False),
     )
 
-    # Execute batch
-    batch_result = use_case.execute(batch_command)
+    is_valid, error_message = request_dto.validate_input()
+    if not is_valid:
+      module.fail_json(msg=f"Input validation failed: {error_message}", error=error_message)
 
-    # Update result
-    result.update(batch_result.to_dict())
-    result['changed'] = batch_result.successful > 0
+    repository = HttpSoapRepository(verify_ssl=module.params.get('validate_certs', True))
+    use_case = SendSoapRequestUseCase(repository)
 
-    # Add metadata
-    result['import_source'] = IMPORT_SOURCE
+    command = DtoMapper.dto_to_command(request_dto)
+    result = use_case.execute(command)
 
-    # Cleanup
-    repository.close()
+    response_dto = DtoMapper.result_to_dto(result)
+    response_payload = response_dto.to_dict()
+
+    if not getattr(result, 'success', False):
+      module.fail_json(msg='SOAP request failed', **response_payload)
+
+    module.exit_json(changed=True, **response_payload)
 
   except Exception as e:
-    module.fail_json(
-      msg=f'Unexpected error during batch execution: {str(e)}',
-      exception=str(e),
-      **result
-    )
-
-  module.exit_json(**result)
+    module.fail_json(msg=f'Unexpected error: {e}')
 
 
 def main():
@@ -342,4 +311,3 @@ def main():
 
 if __name__ == '__main__':
   main()
-ENDOFFILE
